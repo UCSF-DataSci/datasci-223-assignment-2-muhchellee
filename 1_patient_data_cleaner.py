@@ -70,25 +70,29 @@ def clean_patient_data(patients):
         list: Cleaned list of patient dictionaries
     """
     cleaned_patients = []
+    seen_patients = set()
     
     for patient in patients:
         # BUG: Typo in key 'nage' instead of 'name'
-        patient['nage'] = patient['name'].title()
+        patient['name'] = patient['name'].title()
         
         # BUG: Wrong method name (fill_na vs fillna)
-        patient['age'] = patient['age'].fill_na(0)
+        age = int(float(patient['age']))
+        patient['age'] = age
         
         # BUG: Wrong method name (drop_duplcates vs drop_duplicates)
-        patient = patient.drop_duplcates()
         
         # BUG: Wrong comparison operator (= vs ==)
-        if patient['age'] = 18:
+        if patient['age'] >= 18:
             # BUG: Logic error - keeps patients under 18 instead of filtering them out
-            cleaned_patients.append(patient)
+            patient_id = (patient['name'], patient['age'])
+            
+            # checking for duplicates
+            if patient_id not in seen_patients:
+                seen_patients.add(patient_id)
+                cleaned_patients.append(patient)
     
     # BUG: Missing return statement for empty list
-    if not cleaned_patients:
-        return None
     
     return cleaned_patients
 

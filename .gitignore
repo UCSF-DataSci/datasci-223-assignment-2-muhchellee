@@ -1,2 +1,5 @@
 *.pyc
 .venv/
+
+patients_large.csv
+patients_large.parquet
