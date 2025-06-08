@@ -18,6 +18,9 @@ def analyze_patient_cohorts(input_file: str) -> pl.DataFrame:
     # Convert CSV to Parquet for efficient processing
     csv_path = Path(input_file)
     parquet_path = csv_path.with_suffix('.parquet')    
+
+    if not parquet_path.exists() or (csv_path.stat().st_mtime > parquet_path.stat().st_mtime):
+        pl.read_csv(input_file).write_parquet(parquet_path)
     
     # Create a lazy query to analyze cohorts
     cohort_results = (
