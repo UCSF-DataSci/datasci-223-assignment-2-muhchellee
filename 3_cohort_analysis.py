@@ -1,4 +1,5 @@
 import polars as pl
+from pathlib import Path
 
 def analyze_patient_cohorts(input_file: str) -> pl.DataFrame:
     """
@@ -15,28 +16,31 @@ def analyze_patient_cohorts(input_file: str) -> pl.DataFrame:
         - avg_age: Mean age by BMI range
     """
     # Convert CSV to Parquet for efficient processing
-    pl.read_csv(input_file).write_parquet("patients_large.parquet")
+    csv_path = Path(input_file)
+    parquet_path = csv_path.with_suffix('.parquet')    
     
     # Create a lazy query to analyze cohorts
-    cohort_results = pl.scan_parquet("patients_large.parquet").pipe(
-        lambda df: df.filter((pl.col("BMI") >= 10) & (pl.col("BMI") <= 60))
-    ).pipe(
-        lambda df: df.select(["BMI", "Glucose", "Age"])
-    ).pipe(
-        lambda df: df.with_columns(
-            pl.col("BMI").cut(
-                breaks=[10, 18.5, 25, 30, 60],
-                labels=["Underweight", "Normal", "Overweight", "Obese"],
-                left_closed=True
-            ).alias("bmi_range")
+    cohort_results = (
+        pl.scan_parquet(parquet_path)
+        .filter((pl.col("BMI") >= 10) & (pl.col("BMI") <= 60))
+        .select(["BMI", "Glucose", "Age"])
+        .with_columns(
+            pl.when(pl.col("BMI") < 18.5).then(pl.lit("Underweight"))
+             .when(pl.col("BMI") < 25).then(pl.lit("Normal"))
+             .when(pl.col("BMI") < 30).then(pl.lit("Overweight"))
+             .otherwise(pl.lit("Obese"))
+             .alias("bmi_range")
         )
-    ).pipe(
-        lambda df: df.groupby("bmi_range").agg([
+        .filter(pl.col("bmi_range").is_not_null())
+        .group_by("bmi_range")
+        .agg([
             pl.col("Glucose").mean().alias("avg_glucose"),
-            pl.count().alias("patient_count"),
+            pl.len().alias("patient_count"),
             pl.col("Age").mean().alias("avg_age")
         ])
-    ).collect(streaming=True)
+        .collect()
+        .sort("bmi_range")
+    )
     
     return cohort_results
 

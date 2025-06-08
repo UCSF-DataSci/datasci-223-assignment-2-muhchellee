@@ -78,9 +78,9 @@ DOSAGE_FACTORS = {
 # Medications that use loading doses for first administration
 # BUG: Missing commas between list items
 LOADING_DOSE_MEDICATIONS = [
-    "amiodarone"
-    "lorazepam"
-    "fentynal"
+    "amiodarone",
+    "lorazepam",
+    "fentanyl",
 ]
 
 def load_patient_data(filepath):
@@ -94,8 +94,21 @@ def load_patient_data(filepath):
         list: List of patient dictionaries
     """
     # BUG: No error handling for file not found
-    with open(filepath, 'r') as file:
-        return json.load(file)
+    try:
+        with open(filepath, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        print(f"File not found at {filepath}, using sample patient data")
+        return [
+            {
+                "name": "Sample Patient",
+                "weight": 70.0,
+                "medication": "amiodarone",
+                "is_first_dose": True
+            }
+        ]
+    except json.JSONDecodeError:
+        print(f"Error: Invalid JSON file in {filepath}")
 
 def calculate_dosage(patient):
     """
@@ -118,11 +131,11 @@ def calculate_dosage(patient):
     
     # Get the medication factor
     # BUG: Adding 's' to medication name, which doesn't match DOSAGE_FACTORS keys
-    factor = DOSAGE_FACTORS.get(medication + 's', 0)
+    factor = DOSAGE_FACTORS.get(medication, 0)
     
     # Calculate base dosage
     # BUG: Using addition instead of multiplication
-    base_dosage = weight + factor
+    base_dosage = weight * factor
     
     # Determine if loading dose should be applied
     # BUG: No check if 'is_first_dose' key exists
@@ -145,11 +158,11 @@ def calculate_dosage(patient):
     # Add warnings based on medication
     warnings = []
     # BUG: Typos in medication names
-    if medication == "epinephrin":
+    if medication == "epinephrine":
         warnings.append("Monitor for arrhythmias")
     elif medication == "amiodarone":
         warnings.append("Monitor for hypotension")
-    elif medication == "fentynal":
+    elif medication == "fentanyl":
         warnings.append("Monitor for respiratory depression")
     
     patient_with_dosage['warnings'] = warnings
